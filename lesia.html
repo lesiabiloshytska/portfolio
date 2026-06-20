@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="description" content="Lesia Biloshytska — product & design leader. A career portfolio built like the two worlds I work in: print (CMYK) and screen (RGB). Read on screen or export to A4 PDF." />
+<title>Lesia Biloshytska — Career Portfolio (CMYK / RGB)</title>
+<style>
+  /* ============================================================
+     CMYK / RGB — Lesia Biloshytska career portfolio
+     A website that exports to A4 PDF. Each card = one A4 page.
+     Content lives in the CARDS array (single source of truth).
+     Built to WCAG 2.2 AA: native HTML, real buttons + <dialog>,
+     visible focus, readable type, keyboard-only support.
+     ============================================================ */
+
+  :root{
+    --ink:#111014;
+    --paper:#f3f3ef;
+    --line:#cfcfc6;
+    --muted:#4a4a44;
+    --gap:14px;
+    --focus:#111014;
+    --focus-halo:#ffffff;
+  }
+
+  *{ box-sizing:border-box; margin:0; padding:0; }
+
+  html{ font-size:100%; }            /* respects user font-size; supports zoom */
+  html,body{ background:var(--paper); color:var(--ink); }
+  body{
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    -webkit-font-smoothing:antialiased;
+    font-size:1.0625rem;             /* ~17px base for readability */
+    line-height:1.6;
+    padding:2rem clamp(1rem, 4vw, 3.5rem) 5rem;
+  }
+
+  /* ---------- visible focus for everything ---------- */
+  a:focus-visible,
+  button:focus-visible{
+    outline:3px solid var(--focus);
+    outline-offset:2px;
+    border-radius:2px;
+  }
+
+  /* ---------- skip link ---------- */
+  .skip{
+    position:absolute; left:8px; top:-60px;
+    background:var(--ink); color:#fff; padding:10px 16px;
+    border-radius:4px; z-index:200; text-decoration:none;
+    transition:top .15s ease;
+  }
+  .skip:focus{ top:8px; }
+
+  /* ---------- header ---------- */
+  .topbar{
+    display:flex; flex-wrap:wrap; align-items:baseline; gap:.75rem 1.5rem;
+    margin-bottom:1.75rem; padding-bottom:1.125rem;
+    border-bottom:1px solid var(--line);
+  }
+  .brand{ font-family:Georgia,"Times New Roman",serif; font-size:1.5rem; font-weight:700; letter-spacing:.2px; }
+  .role{ font-size:.95rem; color:var(--muted); margin-top:.15rem; }
+  .tagline{ font-size:.9rem; color:var(--muted); margin-top:.5rem; white-space:nowrap; }
+  @media (max-width:760px){ .tagline{ white-space:normal; } }
+  .topbar .spacer{ flex:1 1 auto; }
+  .btn{
+    display:inline-block; text-decoration:none;
+    border:2px solid var(--ink); background:var(--ink); color:var(--paper);
+    font:inherit; font-size:.9rem; font-weight:600; letter-spacing:.2px;
+    padding:.7rem 1.1rem; border-radius:3px; cursor:pointer; white-space:nowrap;
+  }
+  .btn:hover{ background:transparent; color:var(--ink); }
+
+  .hint{ font-size:.85rem; color:var(--muted); margin:0 0 1.5rem; }
+
+  /* ---------- grid of A4 cards ---------- */
+  .grid{
+    display:grid;
+    grid-template-columns:repeat(4, 1fr);
+    gap:var(--gap);
+    list-style:none;
+  }
+  @media (max-width:1100px){ .grid{ grid-template-columns:repeat(2,1fr);} }
+  @media (max-width:560px){ .grid{ grid-template-columns:1fr;} }
+
+  .card{
+    position:relative;
+    container-type:inline-size;        /* size the text relative to the card's own width */
+    aspect-ratio: 210 / 297;           /* A4 portrait */
+    border-radius:4px;
+    padding:1.25rem 1.1rem;
+    color:#fff;
+    overflow:hidden;
+    display:flex; flex-direction:column;
+    transition:transform .18s ease, box-shadow .18s ease;
+    box-shadow:0 1px 0 rgba(0,0,0,.04);
+  }
+  .card.dark-text{ color:var(--ink); }
+  .card:hover{ transform:translateY(-4px); box-shadow:0 12px 30px rgba(0,0,0,.18); }
+
+  .card .num{ font-size:1.2rem; letter-spacing:.16em; font-weight:700; }
+  .card .kicker{ font-size:.72rem; letter-spacing:.16em; text-transform:uppercase; font-weight:600; margin-top:.15rem; }
+  .card .read{
+    position:absolute; top:1.1rem; right:1.1rem; font-size:.72rem;
+    letter-spacing:.08em; text-transform:uppercase; font-weight:600;
+  }
+  .card .title{ margin-top:auto; font-weight:400; }
+  .card-btn{
+    font-family:Georgia, serif; font-weight:700;
+    font-size:clamp(1.1rem, 9cqi, 1.9rem); line-height:1.14;
+    background:none; border:0; padding:0; margin:0;
+    color:inherit; text-align:left; cursor:pointer;
+  }
+  .card-btn::after{ content:""; position:absolute; inset:0; z-index:1; } /* whole card clickable */
+  .card-btn:focus{ outline:none; }                                       /* ring drawn on card */
+  .card:has(.card-btn:focus-visible){
+    outline:3px solid var(--focus);
+    outline-offset:3px;
+    box-shadow:0 0 0 6px var(--focus-halo), 0 12px 30px rgba(0,0,0,.2);
+  }
+  .card .sub{ font-size:clamp(.82rem, 3.4cqi, 1.05rem); margin-top:.7rem; max-width:34ch; }
+  .card .code{
+    margin-top:.9rem; font-size:clamp(.6rem, 2.6cqi, .78rem); letter-spacing:.08em;
+    font-family:"Courier New",monospace;
+    display:flex; gap:1rem; flex-wrap:wrap;
+  }
+
+  /* ---------- reader dialog (native <dialog>) ---------- */
+  dialog#reader{
+    width:min(720px, 94vw); max-height:90vh; overflow:auto;
+    inset:0; margin:auto;                 /* restore native centering (global reset zeroed it) */
+    border:0; border-radius:6px; padding:0;
+    color:var(--ink); background:#fff;
+    box-shadow:0 30px 80px rgba(0,0,0,.4);
+  }
+  dialog#reader::backdrop{ background:rgba(8,8,12,.6); }
+  .sheet-inner{ padding:clamp(1.75rem, 5vw, 3.5rem); position:relative; }
+  .sheet-inner .bar{ height:8px; border-radius:2px; margin-bottom:1.6rem; }
+  .sheet-inner .eyebrow{ font-size:.75rem; letter-spacing:.18em; text-transform:uppercase; color:var(--muted); }
+  .sheet-inner h2{ font-family:Georgia, serif; font-size:clamp(1.5rem, 4vw, 2.1rem); line-height:1.12; margin:.4rem 0 .4rem; }
+  .sheet-inner .d-sub{ color:var(--muted); margin:0 0 1.25rem; font-size:1rem; }
+  .sheet-inner p{ margin:0 0 .9rem; font-size:1.0625rem; }
+  .sheet-inner ul{ margin:0 0 .9rem 0; padding-left:0; list-style:none; }
+  .sheet-inner li{ font-size:1.0625rem; margin:0 0 .75rem; padding-left:1.4rem; position:relative; }
+  .sheet-inner li::before{ content:"—"; position:absolute; left:0; color:var(--muted); }
+  .sheet-inner a{ color:#0b40b8; }
+  .reader-photo{
+    width:120px; height:120px; border-radius:50%; overflow:hidden;
+    display:block; margin:0 0 1.2rem;
+  }
+  .reader-photo img{
+    width:100%; height:100%; object-fit:cover; object-position:center 18%;
+  }
+  .close{
+    position:absolute; top:.75rem; right:.85rem;
+    width:2.5rem; height:2.5rem; font-size:1.6rem; line-height:1;
+    background:#f0f0ec; border:1px solid var(--line); border-radius:50%;
+    cursor:pointer; color:var(--ink);
+    display:flex; align-items:center; justify-content:center;
+  }
+  .close:hover{ background:#e4e4de; }
+
+  /* ---------- reader navigation (prev / next) ---------- */
+  .reader-nav{
+    position:sticky; bottom:0; z-index:2;
+    display:flex; align-items:center; gap:1rem;
+    margin-top:2rem; padding-top:1.1rem;
+    background:#fff; border-top:1px solid var(--line);
+  }
+  .rn-count{
+    font-size:.8rem; letter-spacing:.14em; color:var(--muted);
+    font-variant-numeric:tabular-nums;
+  }
+  .rn-btns{ display:flex; gap:.6rem; margin-left:auto; }
+  .rn-btn{
+    width:2.75rem; height:2.75rem; font-size:1.3rem; line-height:1;
+    background:#fff; border:1.5px solid var(--ink); border-radius:50%;
+    cursor:pointer; color:var(--ink);
+    display:flex; align-items:center; justify-content:center;
+  }
+  .rn-btn:hover{ background:var(--ink); color:#fff; }
+
+  /* ---------- work-sample gallery ---------- */
+  .samples{ margin-top:1.8rem; border-top:1px solid var(--line); padding-top:1.3rem; }
+  .samples-h{
+    font-size:.78rem; letter-spacing:.14em; text-transform:uppercase;
+    color:var(--muted); font-weight:600; margin-bottom:1rem;
+  }
+  .samples-grid{ display:grid; grid-template-columns:1fr 1fr; gap:1.1rem; }
+  .sample{ margin:0; }
+  .sample-btn{
+    display:block; width:100%; padding:0; cursor:pointer;
+    background:#fff; border:1px solid var(--line); border-radius:6px; overflow:hidden;
+  }
+  .sample-btn img{ display:block; width:100%; height:150px; object-fit:cover; object-position:top; }
+  .sample-btn:hover{ border-color:var(--ink); }
+  .sample-btn:focus-visible{ outline:3px solid var(--focus); outline-offset:2px; }
+  .sample figcaption{ font-size:.82rem; color:var(--muted); margin-top:.45rem; line-height:1.45; }
+  .samples-note{ font-size:.62rem; color:var(--muted); margin-top:2.6rem; padding-top:1.4rem; font-style:italic; }
+  @media (max-width:560px){ .samples-grid{ grid-template-columns:1fr; } }
+
+  /* ---------- lightbox ---------- */
+  dialog#lightbox{
+    width:min(1100px, 96vw); max-height:94vh; overflow:auto;
+    inset:0; margin:auto; border:0; border-radius:8px; padding:0; background:#fff;
+    box-shadow:0 30px 80px rgba(0,0,0,.5);
+  }
+  dialog#lightbox::backdrop{ background:rgba(8,8,12,.82); }
+  .lightbox-inner{ position:relative; }
+  #lightbox-img{ display:block; width:100%; max-height:84vh; object-fit:contain; background:#f3f3ef; }
+  #lightbox-cap{ font-size:.9rem; color:var(--muted); padding:.85rem 1.2rem; }
+  .lightbox-close{
+    position:absolute; top:.6rem; right:.6rem; z-index:2;
+    width:2.5rem; height:2.5rem; font-size:1.6rem; line-height:1;
+    background:#fff; border:1px solid var(--line); border-radius:50%;
+    cursor:pointer; color:var(--ink);
+    display:flex; align-items:center; justify-content:center;
+  }
+  .lightbox-close:hover{ background:#e4e4de; }
+  .lightbox-nav{
+    position:absolute; top:50%; transform:translateY(-50%); z-index:2;
+    width:3rem; height:3rem; font-size:1.7rem; line-height:1;
+    background:rgba(255,255,255,.92); border:1px solid var(--line); border-radius:50%;
+    cursor:pointer; color:var(--ink);
+    display:flex; align-items:center; justify-content:center;
+    box-shadow:0 4px 14px rgba(0,0,0,.18);
+  }
+  .lightbox-nav:hover{ background:#fff; }
+  .lightbox-nav:focus-visible{ outline:3px solid var(--focus); outline-offset:2px; }
+  .lightbox-prev{ left:.8rem; }
+  .lightbox-next{ right:.8rem; }
+  .lightbox-nav[hidden]{ display:none; }
+  .lightbox-foot{ display:flex; align-items:center; justify-content:space-between; gap:1rem; }
+  #lightbox-count{ font-size:.8rem; color:var(--muted); padding:.85rem 1.2rem; white-space:nowrap; }
+
+  /* ---------- reduced motion ---------- */
+  @media (prefers-reduced-motion: reduce){
+    *{ transition:none !important; scroll-behavior:auto !important; }
+    .card:hover{ transform:none; }
+  }
+
+  /* ---------- wide screens: 6 cards per row (placed late to win the cascade) ---------- */
+  /* keep the sub from ever overflowing a short card (clamp to N lines + ellipsis) */
+  .card .sub{ display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; }
+
+  /* wide screens: 6 cards per row; shorter cards, so cap the sub to 2 lines */
+  @media (min-width:1500px){
+    .grid{ grid-template-columns:repeat(6,1fr); }
+    .card .sub{ -webkit-line-clamp:2; margin-top:.5rem; }
+  }
+
+  /* ============================================================
+     PRINT — one A4 page per card
+     ============================================================ */
+  .print-only{ display:none; }
+
+  @media print{
+    @page{ size:A4 portrait; margin:0; }
+    body{ background:#fff; padding:0; }
+    .skip, header, main, footer, dialog{ display:none !important; }
+    .print-only{ display:block; }
+    .page{
+      width:210mm; height:297mm; padding:24mm 22mm;
+      color:#fff; position:relative; overflow:hidden;
+      page-break-after:always; break-after:page;
+      display:flex; flex-direction:column;
+      -webkit-print-color-adjust:exact; print-color-adjust:exact;
+    }
+    .page:last-child{ page-break-after:auto; }
+    .page.dark-text{ color:#111014; }
+    .page .p-num{ font-size:16px; letter-spacing:.2em; font-weight:700; }
+    .page .p-kicker{ font-size:16px; letter-spacing:.2em; text-transform:uppercase; margin-top:3px; }
+    .page h2{ font-family:Georgia,serif; font-size:30pt; line-height:1.08; margin-top:auto; }
+    .page .p-sub{ font-size:12pt; margin-top:10pt; max-width:46ch; }
+    .page p{ font-size:11.5pt; margin:0 0 9pt; max-width:60ch; }
+    .page ul{ list-style:none; margin:6pt 0; padding:0; }
+    .page li{ font-size:11.5pt; margin-bottom:8pt; padding-left:16pt; position:relative; max-width:60ch; }
+    .page li::before{ content:"—"; position:absolute; left:0; }
+    .page .p-code{ margin-top:14pt; font-family:"Courier New",monospace; font-size:12pt; letter-spacing:.1em; }
+    .page .body{ margin-top:auto; }
+    .page .p-photo{ width:34mm; height:34mm; border-radius:50%; overflow:hidden; display:block; margin-bottom:8mm; }
+    .page .p-photo img{ width:100%; height:100%; object-fit:cover; object-position:center 18%; }
+    /* dedicated work-sample pages in the PDF */
+    .page.sample-page{ background:#fff !important; color:#111014; justify-content:flex-start; }
+    .page.sample-page .sp-bar{ position:absolute; top:0; left:0; right:0; height:8mm; }
+    .page.sample-page .sp-title{ font-family:Georgia,serif; font-size:15pt; line-height:1.25; margin-top:5mm; max-width:none; }
+    .page.sample-page .sp-grid{ display:grid; grid-template-columns:1fr 1fr; gap:7mm 8mm; margin-top:8mm; align-items:start; }
+    .page.sample-page .sp-fig{ margin:0; }
+    .page.sample-page .sp-fig img{ width:100%; height:auto; max-height:104mm; object-fit:contain; object-position:top center; background:#fff; border:0.3mm solid #e2e2dc; }
+    .page.sample-page .sp-fig figcaption{ font-size:9pt; margin-top:2.5mm; line-height:1.35; color:#333; max-width:none; }
+    .page.sample-page .sp-fig figcaption b{ color:#111014; }
+  }
+</style>
+</head>
+<body>
+
+  <a class="skip" href="#main">Skip to content</a>
+
+  <header class="topbar">
+    <div>
+      <h1 class="brand">Lesia Biloshytska</h1>
+      <p class="role">Product design &amp; service design lead — research, strategy, delivery, team leadership</p>
+      <p class="tagline">CMYK / RGB — a portfolio built like the two worlds I work in: print and screen. Read on screen, or export the whole thing to A4.</p>
+    </div>
+    <div class="spacer"></div>
+    <a class="btn" id="exportBtn" href="LesiaBilo_folio-2026.pdf" download="LesiaBilo_folio-2026.pdf" aria-label="Download the A4 PDF portfolio (opens single-page, fit-height)">Download A4 PDF ↧</a>
+  </header>
+
+  <main id="main">
+    <p class="hint">Select any rectangle to read it — each one is an A4 page. Works with mouse or keyboard.</p>
+    <ul class="grid" id="grid" aria-label="Portfolio sections"></ul>
+  </main>
+
+  <footer></footer>
+
+  <!-- Native dialog: gives focus trap, Escape, and focus-return for free -->
+  <dialog id="reader" aria-labelledby="reader-title">
+    <div class="sheet-inner" id="sheet">
+      <button class="close" id="closeBtn" type="button" aria-label="Close">×</button>
+      <div id="sheet-body"></div>
+      <nav class="reader-nav" aria-label="Move between sections">
+        <span class="rn-count" id="rn-count" aria-hidden="true"></span>
+        <div class="rn-btns">
+          <button class="rn-btn" id="prevBtn" type="button" aria-label="Previous section">←</button>
+          <button class="rn-btn" id="nextBtn" type="button" aria-label="Next section">→</button>
+        </div>
+      </nav>
+    </div>
+  </dialog>
+
+  <!-- Lightbox for enlarging work samples -->
+  <dialog id="lightbox" aria-label="Work sample, enlarged">
+    <div class="lightbox-inner">
+      <button class="lightbox-close" id="lightboxClose" type="button" aria-label="Close">×</button>
+      <button class="lightbox-nav lightbox-prev" id="lightboxPrev" type="button" aria-label="Previous image">←</button>
+      <button class="lightbox-nav lightbox-next" id="lightboxNext" type="button" aria-label="Next image">→</button>
+      <img id="lightbox-img" src="" alt="" />
+      <div class="lightbox-foot">
+        <p id="lightbox-cap"></p>
+        <span id="lightbox-count" aria-hidden="true"></span>
+      </div>
+    </div>
+  </dialog>
+
+  <div class="print-only" id="printArea" aria-hidden="true"></div>
+
+<script>
+/* ============================================================
+   SINGLE SOURCE OF CONTENT.
+   color = card background. dark = use dark text on light card.
+   ============================================================ */
+const CARDS = [
+  {
+    color:"#F5A04A", dark:true,
+    num:"01", kicker:"Who I am",
+    title:"I delivered a national textbook at 20.",
+    sub:"And I've been quietly owning the whole thing ever since.",
+    cmyk:"C0 M40 Y70 K0", rgb:"R245 G160 B74",
+    photo:"lesia.png", photoAlt:"Lesia Biloshytska, smiling in an office",
+    body:`<p>I'm a product design lead who also does the product-manager work — research, strategy, design and delivery, start to finish. Not just the screens.</p>
+          <p>25 years across print and digital. Born in Kyiv, raised in a print house, worked across London and Europe, now Product Design Lead at McKinsey.</p>`
+  },
+  {
+    color:"#2A5BFF",
+    num:"02", kicker:"What I do",
+    title:"I make complicated things make sense.",
+    sub:"For the people who use them — and the teams who build them.",
+    cmyk:"C83 M64 Y0 K0", rgb:"R42 G91 B255",
+    body:`<p>I walk in where a product, service, workflow or brand is a mess, do the UX research to find what people <i>actually</i> need, and own it from first research to finished product.</p>
+          <p>My strength is translation: I speak "client" and I speak "engineer," and I turn one into the other without losing what matters.</p>`
+  },
+  {
+    color:"#CE2A2A",
+    num:"03", kicker:"Point of view",
+    title:"I was a PM before the title existed.",
+    sub:"No coordinators, no safety net. I always delivered on time.",
+    cmyk:"C12 M92 Y88 K2", rgb:"R206 G42 B42",
+    body:`<p>For most of my career it was just me and the client — and later me, the client, and the dev team. I planned it, designed it, and managed everyone's expectations in both directions.</p>
+          <p>What that taught me: <b>no amount of tools fixes how people behave or how motivated they are.</b> That takes a human approach. Better processes and operations are the by-product of doing the research honestly.</p>
+          <p>Quietly, over the years: <b>20+ people hired, 15+ mentored, teams up to 15</b> — across London, Sydney, New York, Shanghai, Prague and more. I just never called it "management."</p>`
+  },
+  {
+    color:"#08C6A2", dark:true,
+    num:"04", kicker:"By the numbers",
+    title:"Proof, not adjectives.",
+    sub:"25 years of measurable change, at a glance.",
+    cmyk:"C70 M0 Y40 K0", rgb:"R8 G198 B162",
+    body:`<ul>
+            <li><b>−80%</b> unapproved software installs after I redesigned the approval flow (McKinsey).</li>
+            <li><b>−20–25%</b> time-to-market leading a cross-functional team of <b>15</b> (Codewell).</li>
+            <li><b>−20%</b> production time &amp; <b>−30–35%</b> brand inconsistencies by setting global brand rules (Hudson).</li>
+            <li><b>+30–35%</b> platform adoption for Lenovo, Philips &amp; IBM work (Fox Hunter).</li>
+            <li><b>9 months</b> to ship a national textbook — at 20.</li>
+            <li><b>20+</b> hired · <b>15+</b> mentored · teams up to <b>15</b> · <b>10</b> cities.</li>
+          </ul>`
+  },
+  {
+    color:"#0A7F2E",
+    num:"05", kicker:"Flagship case · McKinsey",
+    title:"The developers weren't slow — the brief was broken.",
+    sub:"A knowledge platform connecting consultants with knowledge experts · my first McKinsey project, before AI was a thing.",
+    cmyk:"C84 M22 Y100 K8", rgb:"R10 G127 B46",
+    body:`<p><b>The pain:</b> partners burned days routing requests to the wrong knowledge teams; experts burned hours re-preparing the same generic info. The PM blamed the developers for slow delivery.</p>
+          <p><b>What I actually found:</b> the developers weren't the problem — the project was. Sprint goals kept changing mid-sprint, and work reached engineers unclear: no research, no testing with stakeholders, and badly written JIRA stories. So I stopped just fixing bugs and rebuilt how the work ran: I brought in a data analyst to add automation that suggested the right team, ran stakeholder calls where we solved problems together, and shared plans openly so everyone could see the reason behind them.</p>
+          <p>I ran <b>1:1s with every developer and tester</b> to make sure each JIRA story was genuinely understood, and I sat in on the <b>user testing</b> myself — so the brief that reached engineering was clear, complete, and validated.</p>
+          <p><b>What changed:</b> developers started owning their work, bugs dropped, more features delivered per sprint, and the team's mood lifted. Then the numbers followed:</p>
+          <ul>
+            <li>Partner wait for the right team's report: <b>1 week → 3 days</b>.</li>
+            <li><b>+50%</b> correct knowledge-team match on the first try.</li>
+            <li><b>−40%</b> time lost to re-assignment, via redesigned workflows.</li>
+            <li>Redesigned the experts' case-management back-end (from Excel to a real tool) and the front-end UI — all built on the <b>ServiceNow platform</b> — but the thing that actually worked was the <b>workflow redesign</b>, <b>clear communication to users</b> and <b>transparency with stakeholders</b>.</li>
+          </ul>
+          <p>I drove the adoption — knowledge-library articles, release-note newsletters, and a Slack channel for fast troubleshooting. Building it was half the job; getting people to trust and use it was the other half.</p>`,
+    samplesHead:"Research Insights — research · planning · back-end · front-end · alignment · adoption",
+    samplesNote:"Click any image to enlarge, then use the arrows to browse. Research Insights — built on the ServiceNow platform.",
+    samples:[
+      {cat:"Research", src:"work/ri-research-roles.png", cap:"Who uses the platform, and how — from persona to authentication to the right role-based view (dispatcher vs. team manager)."},
+      {cat:"Planning", src:"work/ri-planning-workflow.png", cap:"The full request lifecycle — every role, action and status mapped before anything was designed."},
+      {cat:"Planning", src:"work/ri-planning-validation.png", cap:"Charge-code validation — every valid and exception state worked out up front."},
+      {cat:"Back-end", src:"work/ri-backend-dashboard.png", cap:"The knowledge-team back-end on ServiceNow — the dashboard that replaced spreadsheets."},
+      {cat:"Front-end", src:"work/ri-frontend-form.png", cap:"The request form — inputs prioritised as mandatory, essential and optional."},
+      {cat:"Front-end", src:"work/ri-frontend-portal.png", cap:"The requestor's portal — a searchable, filterable list of every request."},
+      {cat:"Stakeholder alignment", src:"work/ri-stakeholders.png", cap:"Each request tied to the live engagement team, so the right stakeholders are aligned from the start."},
+      {cat:"User adoption", src:"work/ri-adoption-mobile.png", cap:"A responsive, mobile-friendly view to drive adoption across teams."}
+    ]
+  },
+  {
+    color:"#E8E0CE", dark:true,
+    num:"06", kicker:"Origin story",
+    title:"At 20, with 100,000 kids waiting.",
+    sub:"A primary-school textbook for the Slovak Ministry of Education. No boss — I was the freelancer.",
+    cmyk:"C8 M10 Y20 K0", rgb:"R232 G224 B206",
+    body:`<p>If September slipped, <b>~2,000 schools — around 100,000 children</b> — would start the year without their book. My stakeholders were the publisher and the Ministry, directly. I was twenty, and I'd been recommended for one reason: the artist they'd chosen said I was a hard worker.</p>
+          <p><b>The thing that nearly sank it:</b> the writers and artist were delivering too slowly, and I was wasting days trying to cram finished artwork into whatever space was left, resizing it, losing text. So I flipped the process: I built the <b>skeleton of the book first</b> — the structure — and let everyone fill into it. Writers wrote to the space; the artist made art to fit the page. I even wrote <b>Photoshop actions to batch-process the scanned artwork</b> into print-ready files, so the repetitive work ran itself.</p>
+          <p>Given a year, I had the printed book on the shelf in <b>nine months.</b> I didn't know the words "design system" or "wireframe" yet — but that structure-first instinct is the exact move I've made on every project since.</p>`
+  },
+  {
+    color:"#6B35D6",
+    num:"07", kicker:"Corporate · the pattern",
+    title:"I improve how the whole team works — not just the design.",
+    sub:"Hudson · Barclays · McKinsey",
+    cmyk:"C68 M82 Y0 K0", rgb:"R107 G53 B214",
+    body:`<p>In large organisations the design is rarely the real bottleneck — the way the team works is. So that's what I fix: the rules, the templates, the workflows and the communication that everyone downstream depends on.</p>
+          <ul>
+            <li><b>Hudson</b> — built global brand rules + template libraries → production time <b>−20%</b>, regional inconsistencies <b>−30–35%</b>.</li>
+            <li><b>Barclays / banking</b> — enterprise-scale delivery for a major London financial institution.</li>
+            <li><b>McKinsey</b> — redesigned how work reached engineering → faster routing, fewer bugs, happier teams (Card 05).</li>
+          </ul>
+          <p>Same move every time: improve the system, and the whole team gets faster — not just me.</p>`
+  },
+  {
+    color:"#FFC400", dark:true,
+    num:"08", kicker:"Agency · the pattern",
+    title:"One person, every hat.",
+    sub:"Fox Hunter · Codewell",
+    cmyk:"C0 M22 Y100 K0", rgb:"R255 G196 B0",
+    body:`<p>In agencies I was never just "the designer." I was PM, scrum master, researcher, designer, account manager, hiring manager and coach — running stakeholder management, and performance and compensation reviews — often all at once. And I built the ways of working that actually let the team deliver.</p>
+          <ul>
+            <li><b>Codewell</b> — PM + scrum master + researcher + designer simultaneously; led a cross-functional team of <b>15</b> → time-to-market <b>−20–25%</b>.</li>
+            <li><b>Fox Hunter</b> — led delivery for Lenovo, Philips, IBM &amp; Vitana → adoption/engagement <b>+30–35%</b>.</li>
+            <li><b>Throughout</b> — hired, built teams, coached juniors, and owned the client &amp; stakeholder relationships end to end.</li>
+          </ul>`,
+    samplesHead:"Selected work — agency projects",
+    samplesNote:"Click any image to enlarge, then use the arrows to browse.",
+    samples:[
+      {cat:"Codewell", src:"work/codewell-emyto.png", cap:"eMyto mobile app for the Slovak government."},
+      {cat:"FoxHunter", src:"work/foxhunter-lenovo.jpg", cap:"Lenovo Promoter website and mobile app."}
+    ]
+  },
+  {
+    color:"#07273D",
+    num:"09", kicker:"How I work",
+    title:"Structure first. Automate the repetitive work. Align the people.",
+    sub:"The same method, whether it's a textbook or an enterprise platform.",
+    cmyk:"C90 M70 Y45 K55", rgb:"R7 G39 B61",
+    body:`<ul>
+            <li><b>Structure first.</b> I build the skeleton before the surface — the system, the workflow, the information architecture — so everything that follows has a place. (It's how I delivered a textbook at 20, and how I redesign platforms now.)</li>
+            <li><b>Automate the repetitive work.</b> It should run itself. From Photoshop actions to template libraries to workflow automation, I take the boring repetitive work off people so they can spend their time where it counts.</li>
+            <li><b>Align the people.</b> No tool fixes how people behave or how motivated they are — honest research, clear communication and solving problems together do. That's usually the real work.</li>
+          </ul>`
+  },
+  {
+    color:"#00A9E0", dark:true,
+    num:"10", kicker:"Ways to work with me",
+    title:"Pick the shape that fits.",
+    sub:"Same person, different sized problems.",
+    cmyk:"C75 M15 Y0 K0", rgb:"R0 G169 B224",
+    body:`<p>I'm a bit of a chameleon — I adapt to what the company and the team actually need, instead of chasing an exact job title. But the way I work never changes: structure first, automate the repetitive, align the people.</p>
+          <ul>
+            <li><b>Lead product design end to end</b> — research, strategy and delivery on complex enterprise work (and the product-manager work when it's missing).</li>
+            <li><b>Fix a broken workflow, process or service</b> — find what's really wrong (usually people, not tools) and sort it out. This is service design.</li>
+            <li><b>Build and manage a design team</b> — hire, mentor, set the standard.</li>
+            <li><b>Advisory / fractional</b> — drop in where you need the experience, not a full-time hire.</li>
+          </ul>`
+  },
+  {
+    color:"#FF06B5",
+    num:"11", kicker:"What people say",
+    title:"“I would hire her again.”",
+    sub:"A McKinsey stakeholder, a developer on my team, a client, and the manager I reported to — in their words.",
+    cmyk:"C0 M96 Y0 K0", rgb:"R255 G6 B181",
+    body:`<p>“Lesia has been instrumental in researching and designing our new risk portal, aligning many stakeholders to migrate it from Drupal to ServiceNow. She is thoughtful, collaborative and an excellent framer — she does the research, builds a holistic view, and knows how to guide teams to the right answer while still offering options.”<br><b>— Senior Manager, Enterprise Risk (project stakeholder) · McKinsey &amp; Company</b></p>
+          <p>“We worked with Lesia on several projects, mostly mobile apps. As a designer she created modern designs tailored to each app, with a positive response from customers. As a project manager she set good rules, was always open to discussion, and created ideal conditions to finish on time.”<br><b>— Software Developer (reported to Lesia) · Codewell, Bratislava</b></p>
+          <p>“Lesia was a great partner in creating brand elements for three brands — brochures, flyers, newsletters, webpages, stylebooks, anything we wished for. Tight deadlines or a wide range of feedback are no problem for her. She manages her projects with a lot of energy and creativity. A pleasure to work with.”<br><b>— Marketing &amp; Communications Manager · (Lesia's client) · Amsterdam</b></p>
+          <p>“We consolidated much of Hudson's brand design function into a shared resource team in Prague, and Lesia was a foundational member — serving internal clients all over the world, from Asia to London. What impressed me most was her dedication to getting the job done, tactically and creatively, while keeping brand strategy firmly in mind. She has the potential to grow into a strong brand design manager. I would hire her again.”<br><b>— Senior Vice President, Design &amp; Marketing (managed Lesia) · Hudson, Chicago</b></p>`
+  },
+  {
+    color:"#111014",
+    num:"12", kicker:"The human",
+    title:"Paintbrush in hand before I could speak.",
+    sub:"Born in Kyiv into two generations of painters. Raised in galleries — and in my father's print house.",
+    cmyk:"C0 M0 Y0 K100", rgb:"R17 G16 B20",
+    body:`<p>Print taught me there's no "undo" — you get it right the first time. So I chose computers, honestly, for the Ctrl+Z. I've lived in both worlds ever since: the discipline of print, the freedom of the screen.</p>
+          <p>I watch crime documentaries to solve the case before the detective does — which is more or less how I work. I read the room, see the real person behind the title, and I'll give you honest feedback whether or not you asked. <b>No bullshit.</b> I can't fake enthusiasm and I can't hide it either — so you always know where you stand with me.</p>
+          <p>Off the clock: gardening, and interior design that's actually <i>functional</i>, not just for looks. Slovak &amp; Russian native, English fluent, Ukrainian conversational.</p>
+          <p>My favourite line, and how I actually live: <b>Design your life to live and love it.</b> It's all in our hands.</p>
+          <p><b>Prague · </b><a href="https://www.linkedin.com/in/lesiabilo/">linkedin.com/in/lesiabilo</a></p>`
+  }
+];
+
+/* ---------- helpers ---------- */
+const stripTags = (s)=> s.replace(/<[^>]*>/g, "");
+
+/* build the work-sample gallery (screen only — opens a lightbox) */
+function sampleGallery(arr, head, note){
+  return `<div class="samples">
+    <h3 class="samples-h">${head || 'Selected work'}</h3>
+    <div class="samples-grid">
+      ${arr.map(s=>`<figure class="sample">
+        <button type="button" class="sample-btn" data-src="${s.src}" data-cap="${s.cat} — ${s.cap}" aria-label="Enlarge ${s.cat} sample">
+          <img src="${s.src}" alt="${s.cat}: ${s.cap}" loading="lazy">
+        </button>
+        <figcaption><b>${s.cat}.</b> ${s.cap}</figcaption>
+      </figure>`).join('')}
+    </div>
+    ${note ? `<p class="samples-note">${note}</p>` : ''}
+  </div>`;
+}
+
+/* ---------- render grid ---------- */
+const grid = document.getElementById('grid');
+CARDS.forEach((c,i)=>{
+  const li = document.createElement('li');
+  li.className = 'card' + (c.dark ? ' dark-text':'');
+  li.style.background = c.color;
+  li.innerHTML = `
+    <span class="num">${c.num}</span>
+    <span class="kicker">${c.kicker}</span>
+    <span class="read" aria-hidden="true">Read →</span>
+    <h2 class="title"><button type="button" class="card-btn" data-i="${i}" aria-haspopup="dialog">${c.title}</button></h2>
+    <p class="sub">${c.sub}</p>
+    <p class="code"><span>${c.cmyk}</span><span>${c.rgb}</span></p>`;
+  const btn = li.querySelector('.card-btn');
+  btn.setAttribute('aria-label', `${c.num}, ${c.kicker}: ${stripTags(c.title)}. Read more.`);
+  btn.addEventListener('click', ()=> openReader(i));
+  grid.appendChild(li);
+});
+
+/* ---------- reader dialog (native) ---------- */
+const reader    = document.getElementById('reader');
+const sheetBody = document.getElementById('sheet-body');
+const closeBtn  = document.getElementById('closeBtn');
+const prevBtn   = document.getElementById('prevBtn');
+const nextBtn   = document.getElementById('nextBtn');
+const countEl   = document.getElementById('rn-count');
+
+let currentIndex = 0;
+const total = CARDS.length;
+
+/* render a card into the open reader (wraps around at both ends) */
+function renderReader(i){
+  currentIndex = (i + total) % total;
+  const c = CARDS[currentIndex];
+  sheetBody.innerHTML = `
+    <div class="bar" style="background:${c.color}"></div>
+    ${c.photo ? `<span class="reader-photo"><img src="${c.photo}" alt="${c.photoAlt || ''}" /></span>` : ''}
+    <p class="eyebrow">${c.num} · ${c.kicker}</p>
+    <h2 id="reader-title">${c.title}</h2>
+    <p class="d-sub">${c.sub}</p>
+    ${c.body}
+    ${c.samples ? sampleGallery(c.samples, c.samplesHead, c.samplesNote) : ''}`;
+  countEl.textContent = `${c.num} / ${String(total).padStart(2,'0')}`;
+  reader.scrollTop = 0;            // start each card from the top
+}
+
+function openReader(i){
+  renderReader(i);
+  if (typeof reader.showModal === 'function') {
+    reader.showModal();           // native: focus trap + Esc + focus return
+  } else {
+    reader.setAttribute('open','');
+  }
+  closeBtn.focus();
+}
+closeBtn.addEventListener('click', ()=> reader.close());
+prevBtn.addEventListener('click', ()=> renderReader(currentIndex - 1));
+nextBtn.addEventListener('click', ()=> renderReader(currentIndex + 1));
+
+/* ---------- lightbox for work samples ---------- */
+const lightbox     = document.getElementById('lightbox');
+const lightboxImg  = document.getElementById('lightbox-img');
+const lightboxCap  = document.getElementById('lightbox-cap');
+const lightboxClose= document.getElementById('lightboxClose');
+const lightboxPrev = document.getElementById('lightboxPrev');
+const lightboxNext = document.getElementById('lightboxNext');
+const lightboxCount= document.getElementById('lightbox-count');
+
+let lbItems = [];   // {src, alt, cap} for every image in the open card
+let lbIndex = 0;
+
+function showLb(i){
+  if(!lbItems.length) return;
+  lbIndex = (i + lbItems.length) % lbItems.length;   // wrap around
+  const it = lbItems[lbIndex];
+  lightboxImg.src = it.src;
+  lightboxImg.alt = it.alt;
+  lightboxCap.textContent = it.cap;
+  const many = lbItems.length > 1;
+  lightboxCount.textContent = many ? `${lbIndex+1} / ${lbItems.length}` : '';
+  lightboxPrev.hidden = !many;
+  lightboxNext.hidden = !many;
+}
+
+sheetBody.addEventListener('click', (e)=>{
+  const b = e.target.closest('.sample-btn');
+  if(!b) return;
+  const btns = Array.from(sheetBody.querySelectorAll('.sample-btn'));
+  lbItems = btns.map(el=>{
+    const img = el.querySelector('img');
+    return { src: el.dataset.src, alt: img ? img.alt : (el.dataset.cap || ''), cap: el.dataset.cap || '' };
+  });
+  showLb(btns.indexOf(b));
+  if(typeof lightbox.showModal === 'function') lightbox.showModal(); else lightbox.setAttribute('open','');
+});
+lightboxClose.addEventListener('click', ()=> lightbox.close());
+lightboxPrev.addEventListener('click', ()=> showLb(lbIndex - 1));
+lightboxNext.addEventListener('click', ()=> showLb(lbIndex + 1));
+lightbox.addEventListener('keydown', (e)=>{
+  if(e.key === 'ArrowRight'){ e.preventDefault(); showLb(lbIndex + 1); }
+  else if(e.key === 'ArrowLeft'){ e.preventDefault(); showLb(lbIndex - 1); }
+});
+lightbox.addEventListener('click', (e)=>{ if(e.target === lightbox) lightbox.close(); });
+/* click on backdrop closes */
+reader.addEventListener('click', (e)=>{ if(e.target === reader) reader.close(); });
+/* keyboard: ← / → step through cards, Escape fallback for old browsers */
+reader.addEventListener('keydown', (e)=>{
+  if(e.key === 'ArrowRight'){ e.preventDefault(); renderReader(currentIndex + 1); }
+  else if(e.key === 'ArrowLeft'){ e.preventDefault(); renderReader(currentIndex - 1); }
+  else if(e.key === 'Escape' && typeof reader.showModal !== 'function'){ reader.removeAttribute('open'); }
+});
+
+/* ---------- export ---------- */
+/* The "Download A4 PDF" button is an <a download> pointing at the prepared
+   PDF, which has the Initial View baked in: single-page view, no scrolling,
+   fit-height. Browser "Save as PDF" can't embed those, so we serve the file.
+   Cmd/Ctrl+P still works for a live print if ever needed. */
+const PAGE_TITLE = document.title;
+const PDF_NAME = "LesiaBilo_folio-2026";
+window.addEventListener('beforeprint', ()=>{ document.title = PDF_NAME; });
+window.addEventListener('afterprint',  ()=>{ document.title = PAGE_TITLE; });
+
+/* ---------- build print pages ---------- */
+const printArea = document.getElementById('printArea');
+CARDS.forEach(c=>{
+  const p = document.createElement('section');
+  p.className = 'page' + (c.dark ? ' dark-text':'');
+  p.style.background = c.color;
+  p.innerHTML = `
+    <div class="p-num">${c.num}</div>
+    <div class="p-kicker">${c.kicker}</div>
+    <div class="body">
+      ${c.photo ? `<span class="p-photo"><img src="${c.photo}" alt="${c.photoAlt || ''}" /></span>` : ''}
+      <h2>${c.title}</h2>
+      <div class="p-sub">${c.sub}</div>
+      ${c.body}
+      <div class="p-code">${c.cmyk} &nbsp;·&nbsp; ${c.rgb}</div>
+    </div>`;
+  printArea.appendChild(p);
+
+  /* dedicated work-sample pages (4 images per A4) */
+  if(c.samples && c.samples.length){
+    const perPage = 4;
+    const pages = Math.ceil(c.samples.length / perPage);
+    for(let i=0; i<c.samples.length; i+=perPage){
+      const chunk = c.samples.slice(i, i+perPage);
+      const sp = document.createElement('section');
+      sp.className = 'page sample-page';
+      const part = pages > 1 ? ` · ${Math.floor(i/perPage)+1}/${pages}` : '';
+      sp.innerHTML = `
+        <div class="sp-bar" style="background:${c.color}"></div>
+        <div class="p-num">${c.num}</div>
+        <div class="p-kicker">${c.kicker}${part}</div>
+        <div class="sp-title">${c.samplesHead || 'Selected work'}</div>
+        <div class="sp-grid">
+          ${chunk.map(s=>`<figure class="sp-fig">
+            <img src="${s.src}" alt="${s.cat}: ${s.cap}">
+            <figcaption><b>${s.cat}.</b> ${s.cap}</figcaption>
+          </figure>`).join('')}
+        </div>`;
+      printArea.appendChild(sp);
+    }
+  }
+});
+</script>
+</body>
+</html>
